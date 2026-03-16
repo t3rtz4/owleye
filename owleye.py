@@ -79,33 +79,17 @@ def parse_card(card, base_url: str) -> dict | None:
             if card.select_one(".card-author a")
             else "Unknown"
         ),
-        "teaser": (
-            card.select_one(".teaser-text p").text.strip()
-            if card.select_one(".teaser-text p")
-            else "No description available."
-        ),
     }
 
 
-def parse_entry_page(html: str, teaser: str) -> dict:
+def parse_entry_page(html: str) -> dict:
     soup = BeautifulSoup(html, "html.parser")
     result: dict = {
-        "description": teaser,
-        "difficulty": "Unknown",
         "download_url": None,
         "format": None,
         "file_size": "Unknown",
         "checksums": {"md5": "Unknown", "sha1": "Unknown"},
     }
-
-    desc_panel = soup.find("div", id="description")
-    if desc_panel:
-        p = desc_panel.find("p")
-        if p:
-            result["description"] = p.text.strip()
-        diff_div = desc_panel.find("div", class_="pt-2")
-        if diff_div and "Difficulty:" in diff_div.text:
-            result["difficulty"] = diff_div.text.replace("Difficulty:", "").strip()
 
     fileinfo = soup.find("div", id="fileinfo")
     if fileinfo:
@@ -142,7 +126,7 @@ async def scrape_machine(
     async with semaphore:
         try:
             html = await fetch(client, card_info["url"])
-            details = parse_entry_page(html, card_info["teaser"])
+            details = parse_entry_page(html)
 
             if not details["download_url"]:
                 return None  # skip machines with no download
@@ -150,10 +134,8 @@ async def scrape_machine(
             machine = {
                 "id": card_info["id"],
                 "name": card_info["name"],
-                "difficulty": details["difficulty"],
                 "release_date": card_info["release_date"],
                 "author": card_info["author"],
-                "description": details["description"],
                 "download_info": {
                     "url": details["download_url"],
                     "format": details["format"],

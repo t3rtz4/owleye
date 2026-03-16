@@ -10,5 +10,9 @@ dependencies = [
     "rich>=14.3.3",
     "tenacity>=9.1.4",
 ]
+
 [project.scripts]
 owleye = "owleye:main"
+
+[tool.uv]
+package = true
