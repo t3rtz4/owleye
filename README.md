@@ -1,6 +1,6 @@
 # Owleye
 
-A fast, async VulnHub scraper built to feed machine data into [Zertana](#).
+A fast, async VulnHub scraper built to feed machine data into [Zertana](https://github.com/t3rtz4/zertana).
 
 Owleye crawls [VulnHub](https://www.vulnhub.com), collects machine metadata (author, download links, checksums), and saves everything to a local JSON database that Zertana consumes.
 
