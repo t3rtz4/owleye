@@ -16,6 +16,10 @@ BASE_URL = "https://www.vulnhub.com"
 HEADERS = {"User-Agent": "Owleye-Scout/5.0 (Ethical Hacking Lab Builder)"}
 DEFAULT_DB_PATH = Path.home() / ".config" / "zertana" / "machines_db.json"
 
+# VulnHub pages 60+ redirect to page 59
+# this is the true last valid page.
+VULNHUB_LAST_PAGE = 59
+
 def load_existing_db(db_path: Path) -> tuple[dict, set]:
     if db_path.exists():
         try:
@@ -45,7 +49,7 @@ def save_db(db_path: Path, machines: list[dict]) -> None:
     tmp = db_path.with_suffix(".tmp")
     with open(tmp, "w") as f:
         json.dump(db, f, indent=4)
-    tmp.replace(db_path)  # atomic replace
+    tmp.replace(db_path)
 
 
 @retry(
@@ -129,7 +133,7 @@ async def scrape_machine(
             details = parse_entry_page(html)
 
             if not details["download_url"]:
-                return None  # skip machines with no download
+                return None
 
             machine = {
                 "id": card_info["id"],
@@ -158,7 +162,7 @@ async def scrape_page(
         html = await fetch(client, url)
     except httpx.HTTPStatusError as e:
         if e.response.status_code == 404:
-            return []   # signal end of pages
+            return []
         raise
 
     soup = BeautifulSoup(html, "html.parser")
@@ -168,6 +172,15 @@ async def scrape_page(
 
 async def run(max_pages: int | None, concurrency: int, db_path: Path) -> None:
     console.print("[bold green][*] Owleye Scout v5.0 — Full Spectrum Async Recon[/bold green]\n")
+
+    # Guard against VulnHub's redirect bug: pages 60+ silently redirect to page 59,
+    # which would cause infinite scraping of duplicate data.
+    effective_max = min(max_pages, VULNHUB_LAST_PAGE) if max_pages else VULNHUB_LAST_PAGE
+    if max_pages and max_pages > VULNHUB_LAST_PAGE:
+        console.print(
+            f"[yellow][!] Requested {max_pages} pages, but VulnHub only has {VULNHUB_LAST_PAGE} "
+            f"valid pages (pages 60+ redirect to page 59). Capping at {VULNHUB_LAST_PAGE}.[/yellow]"
+        )
 
     existing_db, known_ids = load_existing_db(db_path)
     all_machines: list[dict] = existing_db.get("targets", [])
@@ -190,10 +203,13 @@ async def run(max_pages: int | None, concurrency: int, db_path: Path) -> None:
 
             try:
                 while True:
-                    if max_pages and page_num > max_pages:
+                    if page_num > effective_max:
+                        console.print(
+                            f"[yellow][!] Reached page limit ({effective_max}). Stopping.[/yellow]"
+                        )
                         break
 
-                    progress.update(save_task, description=f"[cyan]Page {page_num}...")
+                    progress.update(save_task, description=f"[cyan]Page {page_num}/{effective_max}...")
                     cards = await scrape_page(client, page_num)
 
                     if not cards:
@@ -223,7 +239,7 @@ async def run(max_pages: int | None, concurrency: int, db_path: Path) -> None:
                         save_db(db_path, all_machines)
 
                     page_num += 1
-                    await asyncio.sleep(0.5)  # polite crawl delay between pages
+                    await asyncio.sleep(0.5)
 
             except KeyboardInterrupt:
                 console.print("\n[bold yellow][!] Interrupted. Saving intel...[/bold yellow]")
@@ -241,9 +257,10 @@ def main() -> None:
     parser.add_argument(
         "--max-pages",
         type=int,
-        default=None,
+        default=VULNHUB_LAST_PAGE,
         metavar="N",
-        help="Stop after N listing pages (default: scrape all)",
+        help=f"Stop after N listing pages (default: {VULNHUB_LAST_PAGE}, the last valid VulnHub page — "
+             f"pages 60+ redirect to page 59 causing infinite loops)",
     )
     parser.add_argument(
         "--concurrency",
