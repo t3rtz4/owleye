@@ -2,7 +2,7 @@
 
 A fast, async VulnHub scraper built to feed machine data into [Zertana](#).
 
-Owleye crawls [VulnHub](https://www.vulnhub.com), collects machine metadata (difficulty, author, download links, checksums), and saves everything to a local JSON database that Zertana consumes.
+Owleye crawls [VulnHub](https://www.vulnhub.com), collects machine metadata (author, download links, checksums), and saves everything to a local JSON database that Zertana consumes.
 
 ---
 
@@ -14,7 +14,7 @@ Owleye crawls [VulnHub](https://www.vulnhub.com), collects machine metadata (dif
 ## Installation
 
 ```bash
-git clone https://github.com/yourname/owleye
+git clone https://github.com/t3rtz4/owleye
 cd owleye
 uv sync
 ```
@@ -53,10 +53,8 @@ The database is saved incrementally — if interrupted, re-running will resume f
     {
       "id": "example/1",
       "name": "Example: 1",
-      "difficulty": "Beginner",
       "release_date": "01 Jan 2024",
       "author": "SomeAuthor",
-      "description": "...",
       "download_info": {
         "url": "https://...",
         "format": "OVA",
